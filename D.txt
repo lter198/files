@@ -1,0 +1,157 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" %>
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@ taglib uri="http://struts.apache.org/tags-bean" prefix="bean" %>
+<%@ taglib uri="http://struts.apache.org/tags-logic" prefix="logic" %>
+
+<html>
+<head>
+    <title>問題管理</title>
+</head>
+<body>
+    <h2>問題入力</h2>
+
+    <html:form action="/questionAction">
+        問題ID：<html:text property="questionId" readonly="true"/><br/>
+        問題内容：<html:text property="questionContent" maxlength="30"/><br/>
+
+        <html:submit property="method" value="登録"/>
+        <html:submit property="method" value="変更入力"/>
+        <html:submit property="method" value="削除"/>
+        <html:submit property="method" value="リフレッシュ"/>
+
+        <br/><font color="red"><bean:write name="questionForm" property="errorMessage"/></font>
+
+        <h3>問題一覧</h3>
+        <table border="1">
+            <tr>
+                <th>問題ID</th>
+                <th>問題内容</th>
+                <th>選択</th>
+            </tr>
+            <logic:iterate id="question" name="questionForm" property="questionList">
+                <tr>
+                    <td><bean:write name="question" property="id"/></td>
+                    <td><bean:write name="question" property="content"/></td>
+                    <td><html:radio property="selectedId" value="${question.id}"/></td>
+                </tr>
+            </logic:iterate>
+        </table>
+    </html:form>
+</body>
+</html>
+
+
+public class QuestionForm extends ActionForm {
+    private String questionId;
+    private String questionContent;
+    private String selectedId;
+    private List<Question> questionList;
+    private String errorMessage;
+
+    // Getter & Setter 全部加上
+}
+
+
+public class QuestionAction extends Action {
+    private QuestionDao dao = new QuestionDao();
+
+    public ActionForward execute(ActionMapping mapping, ActionForm form,
+            HttpServletRequest request, HttpServletResponse response) throws Exception {
+
+        QuestionForm qForm = (QuestionForm) form;
+        String method = request.getParameter("method");
+        String error = null;
+
+        if ("登録".equals(method)) {
+            if (!isValidContent(qForm.getQuestionContent())) {
+                error = "全角文字列のみ、30文字以内で入力してください。";
+            } else if (qForm.getQuestionId() == null || qForm.getQuestionId().isEmpty()) {
+                // 新規登録
+                dao.insert(new Question(qForm.getQuestionContent()));
+            } else {
+                // 更新
+                dao.update(new Question(qForm.getQuestionId(), qForm.getQuestionContent()));
+            }
+        } else if ("変更入力".equals(method)) {
+            if (isEmpty(qForm.getSelectedId())) {
+                error = "チェックボックスを選択してください。";
+            } else {
+                Question selected = dao.getById(qForm.getSelectedId());
+                if (selected != null) {
+                    qForm.setQuestionId(selected.getId());
+                    qForm.setQuestionContent(selected.getContent());
+                }
+            }
+        } else if ("削除".equals(method)) {
+            if (isEmpty(qForm.getSelectedId())) {
+                error = "削除する項目を選択してください。";
+            } else {
+                dao.delete(qForm.getSelectedId());
+                qForm.setQuestionId("");
+                qForm.setQuestionContent("");
+            }
+        }
+
+        // 查詢（画面进入或任何操作后都重新加载列表）
+        qForm.setQuestionList(dao.getAll());
+        qForm.setErrorMessage(error);
+
+        return mapping.findForward("success");
+    }
+
+    private boolean isValidContent(String content) {
+        return content != null && content.matches("^[^\\x00-\\x7F]{1,30}$");
+    }
+
+    private boolean isEmpty(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+}
+
+
+
+public class QuestionDao {
+    private static List<Question> db = new ArrayList<>();
+    private static int idCounter = 1;
+
+    public void insert(Question q) {
+        q.setId(String.valueOf(idCounter++));
+        db.add(q);
+    }
+
+    public List<Question> getAll() {
+        return new ArrayList<>(db);
+    }
+
+    public Question getById(String id) {
+        for (Question q : db) {
+            if (q.getId().equals(id)) return q;
+        }
+        return null;
+    }
+
+    public void update(Question updated) {
+        for (Question q : db) {
+            if (q.getId().equals(updated.getId())) {
+                q.setContent(updated.getContent());
+                break;
+            }
+        }
+    }
+
+    public void delete(String id) {
+        db.removeIf(q -> q.getId().equals(id));
+    }
+}
+
+
+public class Question {
+    private String id;
+    private String content;
+
+    public Question() {}
+
+    public Question(String content) {
+        this.content = content;
+    }
+
