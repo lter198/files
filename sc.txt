@@ -1,0 +1,53 @@
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<html>
+<head>
+    <title>問題管理</title>
+    <style>
+        table, th, td {
+            border: 1px solid gray;
+            border-collapse: collapse;
+            padding: 5px;
+        }
+        th {
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<html:form action="/questionAction">
+    <table>
+        <tr>
+            <td>問題ID：</td>
+            <td><html:text property="questionId" readonly="true"/></td>
+        </tr>
+        <tr>
+            <td>問題内容：</td>
+            <td><html:text property="questionContent" maxlength="30"/></td>
+        </tr>
+    </table>
+    <br/>
+    <html:submit property="method" value="登録"/>
+    <html:submit property="method" value="変更入力"/>
+    <br/><br/>
+    <h3>問題一覧</h3>
+    <table>
+        <tr>
+            <th>問題ID</th>
+            <th>問題内容</th>
+            <th>選択</th>
+        </tr>
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td><input type="checkbox" name="selectedIds" value="${item.questionId}"/></td>
+            </tr>
+        </c:forEach>
+    </table>
+</html:form>
+
+</body>
+</html>
