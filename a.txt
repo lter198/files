@@ -1,0 +1,535 @@
+1.查
+
+<html:form action="/questionAction">
+
+    <!-- 入力区域 -->
+    <table>
+        <tr>
+            <td>① 問題ID：</td>
+            <td><html:text property="questionId" readonly="true"/></td>
+        </tr>
+        <tr>
+            <td>② 問題内容：</td>
+            <td><html:text property="questionContent" maxlength="30"/></td>
+        </tr>
+    </table>
+    <br/>
+
+    <!-- ボタン区域 -->
+    <html:submit property="method" value="登録" action="/addQuestion"/>
+    <html:submit property="method" value="変更入力" action="/updateQuestion"/>
+    <html:submit property="method" value="検索" action="/searchQuestion"/>
+    <br/>
+
+    <!-- 问题列表区域 -->
+    <h3>③ 問題一覧</h3>
+    <table>
+        <tr>
+            <th>問題ID</th>
+            <th>問題内容</th>
+            <th>④ 選択</th>
+        </tr>
+
+        <!-- 通过循环遍历显示问题列表 -->
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td><input type="checkbox" name="selectedIds" value="${item.questionId}"/></td>
+            </tr>
+        </c:forEach>
+    </table>
+
+</html:form>
+
+
+public class QuestionAction extends Action {
+
+    private QuestionService questionService;
+
+    // Setters and Getters for questionService
+    public void setQuestionService(QuestionService questionService) {
+        this.questionService = questionService;
+    }
+
+    // 查询所有问题数据并显示
+    public ActionForward searchQuestion(ActionMapping mapping, ActionForm form, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        // 调用 Service 层查询所有问题
+        List<Question> questionList = questionService.getAllQuestions();
+
+        // 将数据放入请求作用域中
+        request.setAttribute("questionList", questionList);
+
+        // 返回到显示问题列表的页面
+        return mapping.findForward("success");
+    }
+
+    // 其他Action方法（add, update, delete）
+}
+
+public class QuestionService {
+
+    private QuestionDAO questionDAO;
+
+    // Setters and Getters for questionDAO
+    public void setQuestionDAO(QuestionDAO questionDAO) {
+        this.questionDAO = questionDAO;
+    }
+
+    // 获取所有问题数据
+    public List<Question> getAllQuestions() {
+        return questionDAO.selectAllQuestions();
+    }
+
+    // 其他Service方法（add, update, delete）
+}
+
+
+public class QuestionDAO {
+
+    private SqlSessionTemplate sqlSessionTemplate;
+
+    // Setters and Getters for sqlSessionTemplate
+    public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
+        this.sqlSessionTemplate = sqlSessionTemplate;
+    }
+
+    // 查询所有问题数据
+    public List<Question> selectAllQuestions() {
+        return sqlSessionTemplate.selectList("QuestionMapper.selectAllQuestions");
+    }
+
+    // 其他DAO方法（add, update, delete）
+}
+
+
+<mapper namespace="QuestionMapper">
+
+    <!-- 查询所有问题 -->
+    <select id="selectAllQuestions" resultType="com.example.Question">
+        SELECT question_id AS questionId, question_content AS questionContent
+        FROM questioninput
+    </select>
+
+</mapper>
+
+
+<action path="/searchQuestion" 
+        type="com.example.QuestionAction" 
+        name="questionForm" 
+        scope="request" 
+        input="/question.jsp">
+    <forward name="success" path="/question.jsp"/>
+</action>
+
+2.分
+
+<input type="text" name="questionContent" maxlength="30" pattern="[\u3000-\u9FFF\uFF00-\uFFEF]+" required>
+
+public class QuestionAddAction extends Action {
+    @Override
+    public ActionForward execute(ActionMapping mapping, ActionForm form,
+                                 HttpServletRequest request, HttpServletResponse response) {
+
+        String content = request.getParameter("questionContent");
+
+        if (content == null || content.trim().isEmpty()) {
+            request.setAttribute("addError", "問題内容を入力してください。");
+        } else {
+            // 这里可以调用 DAO 添加问题到数据库
+            request.setAttribute("message", "登録成功：" + content);
+        }
+
+        return mapping.findForward("success");
+    }
+}
+
+public class QuestionUpdateAction extends Action {
+    @Override
+    public ActionForward execute(ActionMapping mapping, ActionForm form,
+                                 HttpServletRequest request, HttpServletResponse response) {
+
+        String content = request.getParameter("questionContent");
+
+        if (content == null || content.trim().isEmpty()) {
+            request.setAttribute("updateError", "更新内容は空にできません。");
+        } else {
+            // 调用 DAO 执行更新
+            request.setAttribute("message", "更新成功：" + content);
+        }
+
+        return mapping.findForward("success");
+    }
+}
+
+
+public class QuestionSearchAction extends Action {
+    @Override
+    public ActionForward execute(ActionMapping mapping, ActionForm form,
+                                 HttpServletRequest request, HttpServletResponse response) {
+
+        // 模拟数据（实际应从数据库查询）
+        List<String> questions = Arrays.asList("問題1", "問題2", "問題3");
+        request.setAttribute("questionList", questions);
+
+        return mapping.findForward("success");
+    }
+}
+
+
+<action-mappings>
+    <action path="/searchQuestion"
+            type="com.example.QuestionSearchAction"
+            name="dummyForm"
+            scope="request"
+            validate="false">
+        <forward name="success" path="/question.jsp" />
+    </action>
+
+    <action path="/addQuestion"
+            type="com.example.QuestionAddAction"
+            name="dummyForm"
+            scope="request"
+            validate="false">
+        <forward name="success" path="/searchQuestion.do" />
+    </action>
+
+    <action path="/updateQuestion"
+            type="com.example.QuestionUpdateAction"
+            name="dummyForm"
+            scope="request"
+            validate="false">
+        <forward name="success" path="/searchQuestion.do" />
+    </action>
+</action-mappings>
+
+
+
+<%@ taglib uri="http://struts.apache.org/tags-html" prefix="html" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<html>
+<head>
+    <title>問題管理</title>
+    <style>
+        table, th, td {
+            border: 1px solid gray;
+            border-collapse: collapse;
+            padding: 5px;
+        }
+        th {
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 表单开始 -->
+<html:form action="/questionAction">
+
+    <!-- 入力区域 -->
+    <table>
+        <tr>
+            <td>① 問題ID：</td>
+            <td><html:text property="questionId" readonly="true"/></td>
+        </tr>
+        <tr>
+            <td>② 問題内容：</td>
+            <td><html:text property="questionContent" maxlength="30"/></td>
+        </tr>
+    </table>
+    <br/>
+
+    <!-- ボタン区域 -->
+    <!-- 登録按钮 -->
+    <html:submit property="method" value="登録" action="/addQuestion"/>
+    <!-- 変更入力按钮 -->
+    <html:submit property="method" value="変更入力" action="/updateQuestion"/>
+    <!-- 搜索按钮 -->
+    <html:submit property="method" value="検索" action="/searchQuestion"/>
+    <br/><br/>
+
+    <!-- 問題一覧区域 -->
+    <h3>③ 問題一覧</h3>
+    <table>
+        <tr>
+            <th>問題ID</th>
+            <th>問題内容</th>
+            <th>④ 選択</th>
+        </tr>
+
+        <!-- 这里显示问题列表 -->
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td><input type="checkbox" name="selectedIds" value="${item.questionId}"/></td>
+            </tr>
+        </c:forEach>
+    </table>
+
+</html:form>
+
+</body>
+</html>
+
+
+关于dao的写法，和相应操作的xml（内嵌sql）不会写
+
+public class QuestionSearchAction extends Action {
+
+    private QuestionDao questionDao;
+
+    public QuestionSearchAction() {
+        // 你可以通过依赖注入或手动实例化DAO对象
+        this.questionDao = new QuestionDao(new JdbcTemplate(dataSource));
+    }
+
+    @Override
+    public ActionForward execute(ActionMapping mapping, ActionForm form,
+                                 HttpServletRequest request, HttpServletResponse response) {
+        
+        // 查询前100条数据
+        List<Question> questionList = questionDao.getAllQuestions();
+
+        // 将结果放到request中，供JSP页面使用
+        request.setAttribute("questionList", questionList);
+
+        // 转发到结果页面
+        return mapping.findForward("success");
+    }
+}
+
+
+public class QuestionDao {
+
+    private JdbcTemplate jdbcTemplate;
+
+    public QuestionDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // 查询前100条问题数据
+    public List<Question> getAllQuestions() {
+        String sql = "SELECT questionId, questionContent FROM questions LIMIT 100";
+        return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(Question.class));
+    }
+}
+
+
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td><input type="checkbox" name="selectedIds" value="${item.questionId}"/></td>
+            </tr>
+        </c:forEach>
+
+
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<html>
+<head>
+    <title>问题列表</title>
+    <script type="text/javascript">
+        // 用于更新上方输入框的内容
+        function updateFields() {
+            var selectedId = null;
+            var selectedContent = null;
+
+            // 查找所有的checkbox
+            var checkboxes = document.getElementsByName("selectedIds");
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (checkboxes[i].checked) {
+                    // 获取选中的问题ID和内容
+                    selectedId = checkboxes[i].value;
+                    selectedContent = checkboxes[i].getAttribute("data-content");
+                    break;
+                }
+            }
+
+            // 如果有选中的问题，更新上方输入框
+            if (selectedId !== null) {
+                document.getElementById("questionId").value = selectedId;
+                document.getElementById("questionContent").value = selectedContent;
+            } else {
+                alert("请先选择一个问题!");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h3>修改问题</h3>
+    <form action="/updateQuestion" method="post">
+        <table>
+            <tr>
+                <td>问题ID：</td>
+                <td><input type="text" id="questionId" name="questionId" readonly="true" /></td>
+            </tr>
+            <tr>
+                <td>问题内容：</td>
+                <td><input type="text" id="questionContent" name="questionContent" maxlength="30" /></td>
+            </tr>
+        </table>
+        <br />
+        <!-- 变更入力按钮 -->
+        <input type="submit" value="变更入力" />
+    </form>
+    <br />
+    
+    <h3>问题列表</h3>
+    <table border="1">
+        <tr>
+            <th>问题ID</th>
+            <th>问题内容</th>
+            <th>选择</th>
+        </tr>
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td>
+                    <!-- 复选框，点击后调用updateFields()更新上方的内容 -->
+                    <input type="checkbox" name="selectedIds" value="${item.questionId}" data-content="${item.questionContent}" onclick="updateFields()"/>
+                </td>
+            </tr>
+        </c:forEach>
+    </table>
+</body>
+</html>
+
+
+
+
+3.删
+
+<html:form action="/questionAction">
+
+    <!-- 入力区域 -->
+    <table>
+        <tr>
+            <td>① 問題ID：</td>
+            <td><html:text property="questionId" readonly="true"/></td>
+        </tr>
+        <tr>
+            <td>② 問題内容：</td>
+            <td><html:text property="questionContent" maxlength="30"/></td>
+        </tr>
+    </table>
+    <br/>
+
+    <!-- ボタン区域 -->
+    <!-- 登録按钮 -->
+    <html:submit property="method" value="登録" action="/addQuestion"/>
+    <!-- 変更入力按钮 -->
+    <html:submit property="method" value="変更入力" action="/updateQuestion"/>
+    <!-- 搜索按钮 -->
+    <html:submit property="method" value="検索" action="/searchQuestion"/>
+    <br/>
+
+    <!-- 删除按钮 -->
+    <html:submit property="method" value="削除" action="/deleteQuestion"/>
+
+    <br/><br/>
+
+    <!-- 問題一覧区域 -->
+    <h3>③ 問題一覧</h3>
+    <table>
+        <tr>
+            <th>問題ID</th>
+            <th>問題内容</th>
+            <th>④ 選択</th>
+        </tr>
+
+        <!-- 这里显示问题列表 -->
+        <c:forEach var="item" items="${questionList}">
+            <tr>
+                <td>${item.questionId}</td>
+                <td>${item.questionContent}</td>
+                <td><input type="checkbox" name="selectedIds" value="${item.questionId}"/></td>
+            </tr>
+        </c:forEach>
+    </table>
+
+</html:form>
+
+
+
+public class QuestionAction extends Action {
+
+    private QuestionService questionService;
+
+    // Setters and Getters for questionService
+    public void setQuestionService(QuestionService questionService) {
+        this.questionService = questionService;
+    }
+
+    // 执行删除操作
+    public ActionForward deleteQuestion(ActionMapping mapping, ActionForm form, HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String[] selectedIds = request.getParameterValues("selectedIds");
+
+        if (selectedIds != null) {
+            // 调用Service层删除数据
+            questionService.deleteQuestions(selectedIds);
+        }
+
+        // 重定向到查询页面或返回
+        return mapping.findForward("success");
+    }
+
+    // 其他Action方法（add, update, search）
+}
+
+
+public class QuestionService {
+
+    private QuestionDAO questionDAO;
+
+    // Setters and Getters for questionDAO
+    public void setQuestionDAO(QuestionDAO questionDAO) {
+        this.questionDAO = questionDAO;
+    }
+
+    public void deleteQuestions(String[] selectedIds) {
+        questionDAO.updateFlagForQuestions(selectedIds);
+    }
+
+    // 其他Service方法（add, update, search）
+}
+
+
+public class QuestionDAO {
+
+    private JdbcTemplate jdbcTemplate;
+
+    // Setters and Getters for jdbcTemplate
+    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public void updateFlagForQuestions(String[] selectedIds) {
+        String sql = "UPDATE questions SET flag = 1 WHERE question_id IN (?)";
+        String ids = String.join(",", selectedIds); // 将选中的ID连接成字符串
+        jdbcTemplate.update(sql, ids);
+    }
+
+    // 其他DAO方法（add, update, search）
+}
+
+
+<update id="updateFlagForQuestions">
+    UPDATE questions
+    SET flag = 1
+    WHERE question_id IN
+    <foreach item="id" collection="selectedIds" open="(" separator="," close=")">
+        #{id}
+    </foreach>
+</update>
+
+
+<action path="/deleteQuestion" 
+        type="com.example.QuestionAction" 
+        name="questionForm" 
+        scope="request" 
+        input="/question.jsp">
+    <forward name="success" path="/questionList.jsp"/>
+</action>
